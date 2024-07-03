@@ -1,37 +1,48 @@
-BOOTLOADER_SRC = src/bootloader/boot.asm
-KERNEL_SRC = src/kernel/main.asm
+# Directories
+BOOTLOADER_DIR = src/bootloader
+KERNEL_DIR = src/kernel
+BUILD_DIR = build
 
-BOOTLOADER_BIN = build/bootloader.bin
-KERNEL_BIN = build/kernel.bin
+# Files
+BOOTLOADER_SRC = $(BOOTLOADER_DIR)/boot.asm
+KERNEL_SRC = $(KERNEL_DIR)/kernel.c
+LINKER_SCRIPT = $(KERNEL_DIR)/linker.ld
 
-FLOPPY_IMG = build/PearlOS_bootloader_beta.img
+BOOTLOADER_BIN = $(BUILD_DIR)/bootloader.bin
+KERNEL_OBJ = $(BUILD_DIR)/kernel.o
+KERNEL_BIN = $(BUILD_DIR)/kernel.bin
+OS_IMAGE = $(BUILD_DIR)/os-image.bin
 
-.PHONY: all clean setup build_bin build_floppy cleanbin
+# Tools
+NASM = nasm
+GCC = gcc
+LD = ld
+QEMU = qemu-system-x86_64
 
-all: clean setup build_bin build_floppy cleanbin
+# Flags
+NASM_FLAGS = -f bin
+GCC_FLAGS = -ffreestanding -m64 -c
+LD_FLAGS = -n -T $(LINKER_SCRIPT)
 
-setup: 
-	mkdir -p build
+# Build rules
+all: $(OS_IMAGE)
 
-build_bin: ${BOOTLOADER_BIN} ${KERNEL_BIN}
+$(BOOTLOADER_BIN): $(BOOTLOADER_SRC)
+	$(NASM) $(NASM_FLAGS) -o $@ $<
 
-${BOOTLOADER_BIN}: ${BOOTLOADER_SRC}
-	nasm $< -f bin -o $@
+$(KERNEL_OBJ): $(KERNEL_SRC)
+	$(GCC) $(GCC_FLAGS) -o $@ $<
 
-${KERNEL_BIN}: ${KERNEL_SRC}
-	nasm $< -f bin -o $@
+$(KERNEL_BIN): $(KERNEL_OBJ)
+	$(LD) $(LD_FLAGS) -o $@ $<
 
-build_floppy: ${FLOPPY_IMG}
+$(OS_IMAGE): $(BOOTLOADER_BIN) $(KERNEL_BIN)
+	cat $^ > $@
 
-${FLOPPY_IMG}: ${BOOTLOADER_BIN} ${KERNEL_BIN}
-	dd if=/dev/zero of=$@ bs=512 count=2880
-	mkfs.fat -F12 $@
-	dd if=${BOOTLOADER_BIN} of=$@ conv=notrunc
-	mcopy -i $@ ${KERNEL_BIN} "::kernel.bin"
-	chown 1000:1000 $@
+run: $(OS_IMAGE)
+	$(QEMU) -fda $<
 
 clean:
-	rm -rf build/*
+	rm -f $(BUILD_DIR)/*
 
-cleanbin:
-	rm -f ${BOOTLOADER_BIN} ${KERNEL_BIN}
+.PHONY: all run clean

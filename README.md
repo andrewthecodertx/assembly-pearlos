@@ -16,6 +16,8 @@ These instructions will get you a copy of the project up and running on your loc
 ### Prerequisites
 
 - NASM (The Netwide Assembler) for compiling the assembly source code.
+- DOSFSTOOLS (DOS File System Tools) for reading and writing files to disk.
+- MTOOLS
 - QEMU (Quick Emulator) for running the bootloader in a virtual machine.
 - Optionally, a physical floppy disk or a floppy disk image for testing on real hardware.
 
